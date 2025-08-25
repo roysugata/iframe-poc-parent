@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Parent (Whatfix)</title>
+</head>
+<body>
+  <h1>Parent App</h1>
+  
+  <!-- Dropdown for selecting microphone -->
+  <label for="micSelect">Choose microphone: </label>
+  <select id="micSelect">
+    <option value="">Loading devices...</option>
+  </select>
+  
+  <button onclick="sendStartMessage()">Start Roleplay with Mic</button>
+
+  <iframe
+    id="roleplayFrame"
+    src="https://roysugata.github.io/iframe-poc-child/"
+    width="600"
+    height="400"
+    allow="microphone"
+  ></iframe>
+
+  <script>
+    const micSelect = document.getElementById("micSelect");
+
+    async function loadDevices() {
+      try {
+        // Ask for mic permission first so labels are available
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        alert("Microphone permission denied or blocked.");
+        return;
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      console.log("Devices in parent:", devices);
+
+      // Filter only audioinput
+      const mics = devices.filter(d => d.kind === "audioinput");
+
+      if (mics.length === 0) {
+        micSelect.innerHTML = "<option>No microphones found</option>";
+        return;
+      }
+
+      // Populate dropdown
+      micSelect.innerHTML = "";
+      mics.forEach(mic => {
+        const option = document.createElement("option");
+        option.value = mic.deviceId;
+        option.textContent = mic.label || `Microphone (${mic.deviceId})`;
+        micSelect.appendChild(option);
+      });
+    }
+
+    async function sendStartMessage() {
+      const selectedId = micSelect.value;
+      if (!selectedId) {
+        alert("Please select a microphone first.");
+        return;
+      }
+
+      // Find selected mic object
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const mic = devices.find(d => d.deviceId === selectedId);
+
+      if (!mic) {
+        alert("Selected microphone not found.");
+        return;
+      }
+
+      console.log("Mic selected:", mic);
+
+      const iframe = document.getElementById("roleplayFrame");
+      iframe.contentWindow.postMessage(
+        {
+          type: "ROLEPLAY_CONTROL",
+          action: "START",
+          deviceInfo: {
+            label: mic.label,
+            deviceId: mic.deviceId,
+          },
+        },
+        "*"
+      );
+    }
+
+    // Load devices on page load
+    loadDevices();
+  </script>
+</body>
+</html>
